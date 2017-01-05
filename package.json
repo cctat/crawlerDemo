@@ -1,0 +1,14 @@
+{
+  "name": "crawler",
+  "version": "1.0.0",
+  "description": "爬虫案例",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "cheng",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^0.20.0"
+  }
+}
