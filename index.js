@@ -1,11 +1,42 @@
-/**
- * Created by Yc on 2016/6/30.
- */
-
-var net = require('net');
 var http = require('http');
-var header = require('fs').readFileSync('./header.txt').toString();
-var gn = function (path,callback) {
+var cheerio = require('cheerio');
+var fs = require('fs');
+var dir = './meizi';
+
+function run(high,low) {
+    if(high<low) return;
+    spider('/ooxx/page-'+high,function (html) {
+        var images = [];
+        var $ = cheerio.load(html);  //cheerio解析data
+        var meizi = $('.text img').toArray();  //将所有的img放到一个数组中
+        var len = meizi.length;
+        for (var i=0; i<len; i++) {
+            var imgsrc = 'http:' + meizi[i].attribs.src;  //用循环读出数组中每个src地址
+            images.unshift(imgsrc);                //输出地址
+        }
+        var page = i;
+        var proms = images.map((x,i,a)=>{
+            // console.log(x);
+            return new Promise((resolve,reject)=>{
+                var req = http.get(x,function (res) {
+                    res.on('error',function (err) {
+                        console.error(err);
+                        resolve('fail');
+                    });
+                    var filename = x.substr(x.lastIndexOf('/')+1);
+                    download(dir+'/'+filename,res);
+                    console.log('PAGE:'+page+'...'+filename+'...'+(i+1)+'/'+a.length);
+                    resolve('done');
+                }).end();
+            });
+        });
+        Promise.all(proms)
+            .then((values)=>{
+                run(high-1,low);
+            });
+    });
+}
+function spider(path,callback){
     http.request(
         {
             headers : {
@@ -17,7 +48,6 @@ var gn = function (path,callback) {
                 "User-Agent": "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36",
                 Referer: "http://jandan.net/v",
                 "Accept-Language": "zh-CN,zh;q=0.8",
-                "Cookie": "4036050675=a212EaZdVTtGmJU%2FQ44CpU9i5IZP2Ljr0I0Eg%2B3iGMA; PHPSESSID=i0kp1fea7ri18thb82r66fmig1; _ga=GA1.2.330681373.1467287790; gif-click-load=off; nsfw-click-load=off; 4036050675=4fbeVaLEoaUa6qhYEnwK6xvWxtZfUjFfUFD31YbeyQ; jdna=596e6fb28c1bb47f949e65e1ae03f7f5#1467383943629; Hm_lvt_fd93b7fb546adcfbcf80c4fc2b54da2c=1467287791,1467300607,1467374084,1467377139; Hm_lpvt_fd93b7fb546adcfbcf80c4fc2b54da2c=1467383944; bad-click-load=off"
             },
             hostname: "jandan.net",
             path: path
@@ -33,26 +63,21 @@ var gn = function (path,callback) {
             })
         }
     ).end();
-};
-var fn = function (path,callback) {
-    const socket = net.createConnection(80,'jandan.net');
-    socket.write(
-        'GET '+path+' HTTP/1.1\r\n'+
-        header
-    );
-    // socket.setTimeout(4000,function () {
-    //     socket.end();
-    // });
-    socket.setEncoding('utf-8');
-    var html = '';
-    socket.on('data',function (chunk) {
-        html+=chunk;
-    });
-
-    socket.on('end',function () {
-        callback(html);
-    });
 }
 
-module.exports = gn;
+function download(filename,readable){
+    var file = fs.createWriteStream(filename);
+    file.on('error',function () {
+        file.end()
+    })
+    readable.pipe(file);
+}
 
+//2302 - 1780
+run(2034,2034);
+
+
+process.on('uncaughtException', function (err) {
+    console.error(err.stack);
+    console.log("Node NOT Exiting...");
+});
